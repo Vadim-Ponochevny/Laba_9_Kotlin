@@ -1,10 +1,10 @@
 package com.example.laba_9_kotlin
 
 import android.os.Bundle
-import android.os.Parcelable
 import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.BundleCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -12,7 +12,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.laba_9_kotlin.Retrofit.Common
 import com.example.laba_9_kotlin.Retrofit.RetrofitServices
 import com.example.laba_9_kotlin.data.ForecastResponse
-import com.example.laba_9_kotlin.data.WeatherItem
 import retrofit2.Callback
 import retrofit2.Call
 import retrofit2.Response
@@ -21,7 +20,7 @@ const val API_KEY = "20858ea2833fa2cd74c3978b79c8f71e"
 class MainActivity : AppCompatActivity() {
     private lateinit var mService: RetrofitServices
     private var adapter = Adapter()
-    private lateinit var resp: ForecastResponse
+    private var resp: ForecastResponse? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,13 +34,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         val recyclerView = findViewById<RecyclerView>(R.id.rView)
-        mService = Common.retrofitService
         recyclerView.setHasFixedSize(true)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
         recyclerView.adapter = adapter
+        if (savedInstanceState == null) {
+            mService = Common.retrofitService
+            getAllWeatherList()
+        } else {
+            val savedList = BundleCompat.getParcelable(
+                savedInstanceState,
+                "RESPONSE_FOR_SAVE",
+                ForecastResponse::class.java
+            )
 
-        getAllWeatherList()
+            resp = savedList
+            adapter.submitList(savedList?.list ?: emptyList())
+        }
     }
 
     private fun getAllWeatherList() {
@@ -68,6 +77,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putParcelable("RESPONSE_FOR_SAVE",resp )
+        resp?.let {
+            outState.putParcelable("RESPONSE_FOR_SAVE", it)
+            Log.d("WEATHER_API_SAVE", "Response: ${it}")
+        }
     }
 }
