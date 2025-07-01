@@ -12,15 +12,20 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.laba_9_kotlin.Retrofit.Common
 import com.example.laba_9_kotlin.Retrofit.RetrofitServices
 import com.example.laba_9_kotlin.data.ForecastResponse
+import com.example.laba_9_kotlin.data.WeatherItem
 import retrofit2.Callback
 import retrofit2.Call
 import retrofit2.Response
 const val API_KEY = "20858ea2833fa2cd74c3978b79c8f71e"
 
+object WeatherStore{
+    var weathers: List<WeatherItem>? = null
+}
+
 class MainActivity : AppCompatActivity() {
     private lateinit var mService: RetrofitServices
     private var adapter = Adapter()
-    private var resp: ForecastResponse? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,18 +43,15 @@ class MainActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
 
         recyclerView.adapter = adapter
-        if (savedInstanceState == null) {
+        if (WeatherStore.weathers == null) {
             mService = Common.retrofitService
             getAllWeatherList()
         } else {
-            val savedList = BundleCompat.getParcelable(
-                savedInstanceState,
-                "RESPONSE_FOR_SAVE",
-                ForecastResponse::class.java
-            )
-
-            resp = savedList
-            adapter.submitList(savedList?.list ?: emptyList())
+            Log.d("Из объекта", "Response: ${WeatherStore.weathers}")
+            @Suppress("DEPRECATION")
+            val savedList: ArrayList<WeatherItem>? = savedInstanceState
+                ?.getParcelableArrayList("RESPONSE_FOR_SAVE")
+            adapter.submitList(savedList)
         }
     }
 
@@ -65,7 +67,7 @@ class MainActivity : AppCompatActivity() {
                 if (response.isSuccessful && response.body() != null) {
                     response.body()?.let { body ->
                         adapter.submitList(body.list)
-                        resp = body
+                        WeatherStore.weathers = body.list
                     }
 
                     Log.d("WEATHER_API", "Response: ${response.body()}")
@@ -77,9 +79,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        resp?.let {
-            outState.putParcelable("RESPONSE_FOR_SAVE", it)
-            Log.d("WEATHER_API_SAVE", "Response: ${it}")
+        WeatherStore.weathers?.let {
+            var list = ArrayList(it)
+            outState.putParcelableArrayList("RESPONSE_FOR_SAVE", list)
+            Log.d("Сохранено в onSaveInstanceState", "$list")
         }
     }
 }
