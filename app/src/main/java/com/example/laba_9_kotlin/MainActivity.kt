@@ -1,20 +1,88 @@
 package com.example.laba_9_kotlin
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.BundleCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.laba_9_kotlin.Retrofit.Common
+import com.example.laba_9_kotlin.Retrofit.RetrofitServices
+import com.example.laba_9_kotlin.data.ForecastResponse
+import com.example.laba_9_kotlin.data.WeatherItem
+import retrofit2.Callback
+import retrofit2.Call
+import retrofit2.Response
+const val API_KEY = "20858ea2833fa2cd74c3978b79c8f71e"
+
+object WeatherStore{
+    var weathers: List<WeatherItem>? = null
+}
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var mService: RetrofitServices
+    private var adapter = Adapter()
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
+        }
+
+        val recyclerView = findViewById<RecyclerView>(R.id.rView)
+        recyclerView.setHasFixedSize(true)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+
+        recyclerView.adapter = adapter
+        if (WeatherStore.weathers == null) {
+            mService = Common.retrofitService
+            getAllWeatherList()
+        } else {
+            Log.d("Из объекта", "Response: ${WeatherStore.weathers}")
+            @Suppress("DEPRECATION")
+            val savedList: ArrayList<WeatherItem>? = savedInstanceState
+                ?.getParcelableArrayList("RESPONSE_FOR_SAVE")
+            adapter.submitList(savedList)
+        }
+    }
+
+    private fun getAllWeatherList() {
+        mService.getForecast("Norilsk", API_KEY, "metric").enqueue(object : Callback<ForecastResponse> {
+            override fun onFailure(call: Call<ForecastResponse>, t: Throwable) {
+                Log.e("WEATHER_API", "Error: ${t.message}")
+
+
+            }
+
+            override fun onResponse(call: Call<ForecastResponse>, response: Response<ForecastResponse>) {
+                if (response.isSuccessful && response.body() != null) {
+                    response.body()?.let { body ->
+                        adapter.submitList(body.list)
+                        WeatherStore.weathers = body.list
+                    }
+
+                    Log.d("WEATHER_API", "Response: ${response.body()}")
+
+                }
+            }
+        })
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        WeatherStore.weathers?.let {
+            var list = ArrayList(it)
+            outState.putParcelableArrayList("RESPONSE_FOR_SAVE", list)
+            Log.d("Сохранено в onSaveInstanceState", "$list")
         }
     }
 }
